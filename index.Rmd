@@ -1,5 +1,5 @@
 ---
-title: "Practice Machine Learning"
+title: "Practice Machine Learning- Coursera"
 author: "Stefano Arcuri"
 date: "26 dicembre 2015"
 output: 
@@ -21,6 +21,10 @@ Class E: throwing the hips to the front
 
 More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset)
 
+###My Considerations about criteria
+I tried with frustration various techniques, but due to limitation of my machine (4gb RAM) I had to choose for lightest criterias, so decision trees in two ways. 
+
+
 ###Load packages
 
 ```{r}
@@ -36,7 +40,7 @@ test <- read.csv(url(testUrl), header=TRUE, sep=",", na.strings=c("NA","#DIV/0!"
 
 ```
 ###Analyze data
-```{r, echo=FALSE}
+```{r}
 str(training[, ])
 ```
 ###REmove columns not necessary
@@ -46,7 +50,7 @@ test <- test[,-seq(1:7)]
 ```
 
 ###REmove columns NA
-```{r, echo=FALSE}
+```{r}
 indexNA <- as.vector(sapply(training[,1:152],function(x) {length(which(is.na(x)))!=0}))
 training <- training [,!indexNA]
 test <- test[,!indexNA]
@@ -66,13 +70,13 @@ plot( levelplot(cor.check,
                 main ="Correlation matrix for all WLE features in training set",
                 scales=list(x=list(rot=90), cex=1.0),))
 
-highly.cor <- findCorrelation(cor(training[, -c(last)]), cutoff=0.9)
+highly.cor <- findCorrelation(cor(training[, -c(last)]), cutoff=0.97)
 
 training <- training[, -highly.cor]
 test <- test[, -highly.cor]
 ```
-###REmove columns not necessary
-```{r, echo=FALSE}
+###Preprocessing
+```{r}
 preProcValues <- preProcess(training, method = c("center", "scale"))
 trainTransformed <- predict(preProcValues, training)
 testTransformed <- predict(preProcValues, test)
@@ -80,7 +84,7 @@ testTransformed <- predict(preProcValues, test)
 ```
 
 ###Near Zero Variance
-```{r, echo=FALSE}
+```{r}
 nzv <- nearZeroVar(trainTransformed,saveMetrics=TRUE)
 as.data.frame(nzv)
 trainTransformed <- trainTransformed[,nzv$nzv==FALSE]
@@ -89,30 +93,37 @@ testTransformed <- testTransformed[,nzv$nzv==FALSE]
 
 ###Cross Validation set
 ```{r, echo=FALSE}
-inTrain <- createDataPartition(y=trainTransformed$classe, p=0.7, list=FALSE )
+inTrain <- createDataPartition(y=trainTransformed$classe, p=0.85, list=FALSE )
 xtraining <- trainTransformed[inTrain,]
 xtesting <- trainTransformed[-inTrain,]
 ```
 
 ###load library rpart
-```{r, echo=FALSE}
+```{r}
 library(rpart)
 library(rpart.plot)
 library(rattle)
 library(caret)
+
 ```
 
 ###Decision trees
-```{r, echo=FALSE}
+```{r}
 dectree <- rpart(classe ~ ., data=xtraining, method="class")
 fancyRpartPlot(dectree)
 ```
 
 ###Decision trees2
-```{r, echo=FALSE}
+```{r}
 dectree2 <- train(classe ~ .,method="rpart",data=xtraining)
 print (dectree2$finalModel)
 plot (dectree2$finalModel,uniform = TRUE, main="Class")
-text (dectree2$finalModel, use.n=TRUE, all=TRUE, cex=.8)
+text (dectree2$finalModel, use.n=TRUE, all=TRUE, cex=1.0)
 fancyRpartPlot(dectree2$finalModel)
+```
+
+###Cross Validation 
+```{r}
+a<-predict (dectree2, newdata = xtesting)
+confusionMatrix(a, xtesting$classe)
 ```
