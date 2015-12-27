@@ -55,6 +55,7 @@ indexNA <- as.vector(sapply(training[,1:152],function(x) {length(which(is.na(x))
 training <- training [,!indexNA]
 test <- test[,!indexNA]
 ```
+
 ###HCV
 ```{r, echo=FALSE}
 last <- as.numeric(ncol(training))
@@ -67,7 +68,7 @@ for (i in 1:prior) {
 cor.check <- cor(training[, -c(last)])
 diag(cor.check) <- 0 
 plot( levelplot(cor.check, 
-                main ="Correlation matrix for all WLE features in training set",
+                main ="Correlation matrix",
                 scales=list(x=list(rot=90), cex=1.0),))
 
 highly.cor <- findCorrelation(cor(training[, -c(last)]), cutoff=0.97)
@@ -75,6 +76,8 @@ highly.cor <- findCorrelation(cor(training[, -c(last)]), cutoff=0.97)
 training <- training[, -highly.cor]
 test <- test[, -highly.cor]
 ```
+
+
 ###Preprocessing
 ```{r}
 preProcValues <- preProcess(training, method = c("center", "scale"))
@@ -121,6 +124,14 @@ plot (dectree2$finalModel,uniform = TRUE, main="Class")
 text (dectree2$finalModel, use.n=TRUE, all=TRUE, cex=1.0)
 fancyRpartPlot(dectree2$finalModel)
 ```
+
+###Cross Validation 
+
+Class A: exactly according to the specification
+Class B: throwing the elbows to the front
+Class C: lifting the dumbbell only halfway
+Class D: lowering the dumbbell only halfway
+Class E: throwing the hips to the front
 
 ###Cross Validation 
 ```{r}
