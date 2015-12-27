@@ -7,10 +7,12 @@ output:
     keep_md: yes
 ---
 ### Introduction
+(this is from exercise specification)
 
 Using devices such as *Jawbone Up, Nike FuelBand, and Fitbit* it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
 
 ###Goal
+
 In this project, we will use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways:
 
 Class A: exactly according to the specification
@@ -22,10 +24,9 @@ Class E: throwing the hips to the front
 More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset)
 
 ###My Considerations about criteria
-I tried with frustration various techniques, but due to limitation of my machine (4gb RAM) I had to choose for lightest criterias, so decision trees in two ways. 
+I tried with frustration various techniques as bagging and random forest, but due to limitation of my machine (4gb RAM - not sure the reason is this) I had to choose for lightest criterias, so I applied the decision trees in two ways.
 
-
-###Load packages
+###Load libraries
 
 ```{r}
 library (caret);library (kernlab)
@@ -42,14 +43,20 @@ test <- read.csv(url(testUrl), header=TRUE, sep=",", na.strings=c("NA","#DIV/0!"
 ###Analyze data
 ```{r}
 str(training[, ])
+summary(training)
+summary(test)
 ```
+
 ###REmove columns not necessary
+removing not significative columns (first seven)
 ```{r, echo=FALSE}
+
 training <- training[,-seq(1:7)]
 test <- test[,-seq(1:7)]
 ```
 
 ###REmove columns NA
+removing columns with NA 
 ```{r}
 indexNA <- as.vector(sapply(training[,1:152],function(x) {length(which(is.na(x)))!=0}))
 training <- training [,!indexNA]
@@ -57,6 +64,8 @@ test <- test[,!indexNA]
 ```
 
 ###HCV
+removing high  correlated variables. 
+I noticed that raising the cutoff the accuracy increases. 
 ```{r, echo=FALSE}
 last <- as.numeric(ncol(training))
 prior <- last - 1
@@ -65,16 +74,16 @@ for (i in 1:prior) {
         training[,i] <- as.numeric(training[,i])
         test[,i] <- as.numeric(test[,i])}
 
-cor.check <- cor(training[, -c(last)])
-diag(cor.check) <- 0 
-plot( levelplot(cor.check, 
+correlation.check <- cor(training[, -c(last)])
+diag(correlation.check) <- 0 
+plot( levelplot(correlation.check, 
                 main ="Correlation matrix",
                 scales=list(x=list(rot=90), cex=1.0),))
 
-highly.cor <- findCorrelation(cor(training[, -c(last)]), cutoff=0.97)
+highly.correlated <- findCorrelation(cor(training[, -c(last)]), cutoff=0.97)
 
-training <- training[, -highly.cor]
-test <- test[, -highly.cor]
+training <- training[, -highly.correlated]
+test <- test[, -highly.correlated]
 ```
 
 
@@ -125,7 +134,7 @@ text (dectree2$finalModel, use.n=TRUE, all=TRUE, cex=1.0)
 fancyRpartPlot(dectree2$finalModel)
 ```
 
-###Cross Validation 
+###Legend
 
 Class A: exactly according to the specification
 Class B: throwing the elbows to the front
@@ -138,3 +147,9 @@ Class E: throwing the hips to the front
 a<-predict (dectree2, newdata = xtesting)
 confusionMatrix(a, xtesting$classe)
 ```
+
+
+###Considerations 
+I tried other solutions but my computer went in crash or took to many times.
+Only left options were decision tree rpart ( I tried also party, but no success).
+As said above I noticed that raising the cutoff (removing highly correlated variables the accuracy increases from 45 to 50. 
