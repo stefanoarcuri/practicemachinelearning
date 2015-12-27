@@ -6,19 +6,113 @@ output:
   html_document: 
     keep_md: yes
 ---
+### Introduction
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Using devices such as *Jawbone Up, Nike FuelBand, and Fitbit* it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+###Goal
+In this project, we will use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways:
+
+Class A: exactly according to the specification
+Class B: throwing the elbows to the front
+Class C: lifting the dumbbell only halfway
+Class D: lowering the dumbbell only halfway
+Class E: throwing the hips to the front
+
+More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset)
+
+###Load packages
 
 ```{r}
-summary(cars)
+library (caret);library (kernlab)
 ```
 
-You can also embed plots, for example:
+###Load data
+```{r}
+trainUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+training <- read.csv(url(trainUrl), header=TRUE, sep=",", na.strings=c("NA","#DIV/0!",""))
+test <- read.csv(url(testUrl), header=TRUE, sep=",", na.strings=c("NA","#DIV/0!",""))
 
+```
+###Analyze data
 ```{r, echo=FALSE}
-plot(cars)
+str(training[, ])
+```
+###REmove columns not necessary
+```{r, echo=FALSE}
+training <- training[,-seq(1:7)]
+test <- test[,-seq(1:7)]
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+###REmove columns NA
+```{r, echo=FALSE}
+indexNA <- as.vector(sapply(training[,1:152],function(x) {length(which(is.na(x)))!=0}))
+training <- training [,!indexNA]
+test <- test[,!indexNA]
+```
+###HCV
+```{r, echo=FALSE}
+last <- as.numeric(ncol(training))
+prior <- last - 1
+
+for (i in 1:prior) {
+        training[,i] <- as.numeric(training[,i])
+        test[,i] <- as.numeric(test[,i])}
+
+cor.check <- cor(training[, -c(last)])
+diag(cor.check) <- 0 
+plot( levelplot(cor.check, 
+                main ="Correlation matrix for all WLE features in training set",
+                scales=list(x=list(rot=90), cex=1.0),))
+
+highly.cor <- findCorrelation(cor(training[, -c(last)]), cutoff=0.9)
+
+training <- training[, -highly.cor]
+test <- test[, -highly.cor]
+```
+###REmove columns not necessary
+```{r, echo=FALSE}
+preProcValues <- preProcess(training, method = c("center", "scale"))
+trainTransformed <- predict(preProcValues, training)
+testTransformed <- predict(preProcValues, test)
+
+```
+
+###Near Zero Variance
+```{r, echo=FALSE}
+nzv <- nearZeroVar(trainTransformed,saveMetrics=TRUE)
+as.data.frame(nzv)
+trainTransformed <- trainTransformed[,nzv$nzv==FALSE]
+testTransformed <- testTransformed[,nzv$nzv==FALSE]
+```
+
+###Cross Validation set
+```{r, echo=FALSE}
+inTrain <- createDataPartition(y=trainTransformed$classe, p=0.7, list=FALSE )
+xtraining <- trainTransformed[inTrain,]
+xtesting <- trainTransformed[-inTrain,]
+```
+
+###load library rpart
+```{r, echo=FALSE}
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(caret)
+```
+
+###Decision trees
+```{r, echo=FALSE}
+dectree <- rpart(classe ~ ., data=xtraining, method="class")
+fancyRpartPlot(dectree)
+```
+
+###Decision trees2
+```{r, echo=FALSE}
+dectree2 <- train(classe ~ .,method="rpart",data=xtraining)
+print (dectree2$finalModel)
+plot (dectree2$finalModel,uniform = TRUE, main="Class")
+text (dectree2$finalModel, use.n=TRUE, all=TRUE, cex=.8)
+fancyRpartPlot(dectree2$finalModel)
+```
